@@ -1,155 +1,30 @@
-# 第 3 章：OpenFGA 架构与组件
+# 第 4 章：OpenFGA 架构与组件
 
-深入了解 OpenFGA 的系统架构和核心组件，理解各组件的作用和交互关系。
+深入理解 OpenFGA 的系统架构与核心组件
 
 ## 章节概述
 
-本章将深入剖析 OpenFGA 的整体架构设计和核心组件，帮助读者从系统层面理解 OpenFGA。在开始学习架构之前，我们先通过简单的 Docker 命令快速启动一个本地测试环境，让您能够在学习的过程中进行实际操作和验证。
+本章深入剖析 OpenFGA 的系统架构和核心组件，帮助读者理解 OpenFGA 的整体设计思路。在快速入门章节（第 3 章）的基础上，本章详细介绍了授权模型引擎、关系元组存储、API 服务层等核心组件的设计原理，以及性能与可扩展性的设计考量。通过学习本章，读者将深入理解 OpenFGA 的内部工作机制。
 
 **学习目标：**
 
-1. 掌握快速启动 OpenFGA 本地测试环境的方法
-2. 理解 OpenFGA 的整体架构设计
-3. 掌握核心组件的功能和作用
-4. 了解 HTTP API 和 gRPC API 的架构
-5. 理解存储后端的选择与配置
-6. 掌握组件间的交互关系和数据流
+1. 理解 OpenFGA 的整体架构设计
+2. 掌握核心组件的功能和作用
+3. 了解授权模型引擎的工作原理
+4. 理解 HTTP API 和 gRPC API 的架构
+5. 掌握存储后端的选择与配置
+6. 理解性能优化和可扩展性设计
+7. 掌握组件间的交互关系和数据流
 
 **预计字数：** 10000-12000 字
 
 ---
 
-## 3.1 快速启动本地测试环境
-
-在深入学习 OpenFGA 的架构和组件之前，我们先快速搭建一个本地测试环境。这样您可以在学习的过程中随时进行实验和验证。OpenFGA 提供了官方的 Docker 镜像，让您可以一条命令启动服务。
-
-### 3.1.1 使用 Docker 快速启动
-
-**前置要求：**
-
-- 已安装 Docker（版本 20.10 或更高）
-- 确保 Docker 服务正在运行
-
-**一键启动命令：**
-
-```bash
-docker pull openfga/openfga && \
-docker run -p 8080:8080 -p 8081:8081 -p 3000:3000 openfga/openfga run
-```
-
-**命令说明：**
-
-- `docker pull openfga/openfga`：拉取最新的 OpenFGA Docker 镜像
-- `-p 8080:8080`：映射 HTTP API 端口（默认端口）
-- `-p 8081:8081`：映射 gRPC API 端口
-- `-p 3000:3000`：映射 Playground 端口（可选，用于可视化测试）
-- `openfga/openfga run`：运行 OpenFGA 服务
-
-**启动成功标志：**
-
-当您看到类似以下输出时，表示服务已成功启动：
-
-```
-{"level":"info","ts":1234567890.123,"msg":"starting openfga service..."}
-{"level":"info","ts":1234567890.456,"msg":"grpc server listening","addr":"0.0.0.0:8081"}
-{"level":"info","ts":1234567890.789,"msg":"http server listening","addr":"0.0.0.0:8080"}
-```
-
-**验证服务：**
-
-打开浏览器访问 `http://localhost:8080/healthz`，如果返回 `{"status":"ok"}`，说明服务运行正常。
-
-或使用 `curl` 命令验证：
-
-```bash
-curl http://localhost:8080/healthz
-```
-
-### 3.1.2 使用内存存储（开发测试）
-
-上述命令默认使用内存存储，适合快速测试和学习。内存存储的特点：
-
-- ✅ **优点**：启动快速，无需额外配置
-- ❌ **缺点**：数据不持久化，容器重启后数据丢失
-
-**注意**：内存存储仅适用于开发测试环境，生产环境请参考第 10 章的部署配置。
-
-### 3.1.3 访问 Playground（可选）
-
-OpenFGA Playground 是一个可视化的测试工具，可以帮助您快速验证授权模型：
-
-1. 在浏览器中打开：`http://localhost:3000`
-2. 在 Playground 中可以：
-   - 创建和编辑授权模型
-   - 添加关系元组
-   - 执行授权检查
-   - 可视化关系图
-
-**快速测试示例：**
-
-在 Playground 中尝试一个简单的文档权限模型：
-
-```openfga
-model
-  schema 1.1
-
-type user
-
-type document
-  relations
-    define viewer: [user]
-```
-
-添加关系元组：
-
-```json
-{
-  "user": "user:alice",
-  "relation": "viewer",
-  "object": "document:report"
-}
-```
-
-执行检查：
-
-```json
-{
-  "user": "user:alice",
-  "relation": "viewer",
-  "object": "document:report"
-}
-```
-
-结果应该返回 `{"allowed": true}`。
-
-### 3.1.4 停止服务
-
-当您完成测试后，可以使用以下命令停止容器：
-
-```bash
-# 查看运行中的容器
-docker ps
-
-# 停止容器（替换 CONTAINER_ID 为实际的容器 ID）
-docker stop CONTAINER_ID
-
-# 或者强制停止所有 OpenFGA 容器
-docker stop $(docker ps -q --filter ancestor=openfga/openfga)
-```
-
-### 3.1.5 下一步
-
-现在您已经有了一个运行中的 OpenFGA 实例，接下来让我们深入了解它的架构设计和核心组件。在学习过程中，您可以随时使用这个本地实例进行实验。
-
-**提示**：本章将详细介绍 OpenFGA 的架构和组件，如果您需要在生产环境中部署 OpenFGA，请参考第 10 章《部署与运维》，其中包含了完整的 Docker 配置、Kubernetes 部署、存储后端配置等内容。
-
----
-
-## 3.2 OpenFGA 的整体架构设计
+## 4.1 OpenFGA 整体架构
 
 OpenFGA 是一个高性能且灵活的授权/权限引擎，灵感来源于 Google 的 Zanzibar 论文。它采用现代化的微服务架构设计，遵循云原生最佳实践，强调高性能、可扩展性和可维护性。作为云原生计算基金会（CNCF）的孵化项目，OpenFGA 拥有开放的治理模式，鼓励社区贡献和协作。理解 OpenFGA 的整体架构，有助于我们更好地部署、配置和使用该系统。
 
-### 3.2.1 系统架构概览
+### 4.1.1 系统架构概览
 
 OpenFGA 的整体架构采用分层设计，每一层都有明确的职责和接口。这种设计使得系统易于理解、维护和扩展。整体架构可以分为以下几个主要层次：
 
@@ -244,7 +119,11 @@ OpenFGA 的架构设计遵循以下核心原则：
 - 配置管理，支持环境变量和配置文件
 - 服务发现，支持 Kubernetes Service 和 DNS 服务发现
 
-### 3.2.2 分层架构说明
+### 4.1.2 核心组件关系
+
+### 4.1.3 数据流向与处理流程
+
+### 4.2 分层架构说明
 
 #### 客户端层（Client Layer）
 
@@ -411,11 +290,11 @@ OpenFGA 使用 CCache（一个 Go 语言的 LRU 缓存库）实现内存缓存�
 
 ---
 
-## 3.3 核心组件
+## 4.2 核心组件详解
 
 OpenFGA 的核心组件包括 Store（存储）、Authorization Model（授权模型）和 Relationship Tuple（关系元组）。这些组件共同构成了 OpenFGA 的授权系统基础。理解这些组件的概念、作用以及它们之间的交互关系，是使用 OpenFGA 的基础。
 
-### 3.3.0 组件关系概览
+### 4.2.0 组件关系概览
 
 在深入介绍每个组件之前，我们先理解它们之间的关系：
 
@@ -436,7 +315,7 @@ Store（存储空间）
 - 一个 Store 可以有多个 Authorization Model 版本，但同一时间只能使用一个版本
 - Relationship Tuple 必须符合当前使用的 Authorization Model 的约束
 
-### 3.7.1 Store（存储空间）
+### 4.2.1 Store（存储空间）
 
 **Store** 是 OpenFGA 中的核心概念之一，代表一个独立的授权数据空间。每个 Store 都有自己的授权模型和关系元组集合，不同 Store 之间的数据完全隔离。Store 的设计使得 OpenFGA 能够支持多租户场景，每个租户可以拥有独立的 Store，实现数据隔离和权限隔离。
 
@@ -579,7 +458,7 @@ env_stores = {
 }
 ```
 
-### 3.2.2 Authorization Model（授权模型）
+### 4.2.2 Authorization Model（授权模型）
 
 **Authorization Model（授权模型）**定义了系统中的类型（Type）和关系（Relation），是 OpenFGA 授权系统的核心规则定义。授权模型使用声明式的 DSL（领域特定语言）来定义，描述了系统中实体之间的关系以及权限如何通过关系来推导。
 
@@ -834,7 +713,7 @@ type document
 4. **文档化**：为模型添加注释和文档说明
 5. **版本追踪**：在生产环境中明确使用哪个模型版本
 
-### 3.7.3 Relationship Tuple（关系元组）
+### 4.2.3 Relationship Tuple（关系元组）
 
 **Relationship Tuple（关系元组）**是 OpenFGA 中存储的具体授权数据，表示用户和资源之间的实际关系。
 
@@ -1113,11 +992,17 @@ await fga_client.write({
 
 ---
 
-## 3.4 授权模型引擎
+## 4.3 授权模型引擎
 
 授权模型引擎是 OpenFGA 的核心组件，负责解析授权模型、执行权限检查、处理关系图遍历等核心功能。理解授权模型引擎的工作原理，有助于我们优化授权模型设计和系统性能。
 
-### 3.7.1 Check API 的内部实现
+### 4.3.1 模型解析与验证
+
+### 4.3.2 权限计算引擎
+
+### 4.3.3 递归用户集检查
+
+### 4.3.4 Check API 的内部实现
 
 Check API 是 OpenFGA 最核心的 API，用于检查用户是否对特定资源具有某种关系。根据 OpenFGA 的架构设计，Check API 的处理涉及多个层次的组件协作。
 
@@ -1251,7 +1136,7 @@ if has_direct_relation(user, relation, obj):
     return {"allowed": True}  # 短路返回
 ```
 
-### 3.2.2 ListObjects API 的内部实现
+### 4.3.5 ListObjects API 的内部实现
 
 ListObjects API 用于列举用户可以访问的所有对象。其实现涉及反向扩展（ReverseExpand）和候选对象检查。
 
@@ -1298,7 +1183,7 @@ def check_intersection(user, relation, obj):
     return base_set and allowed_set and not restricted_set
 ```
 
-### 3.7.3 性能优化策略
+### 4.3.6 性能优化策略
 
 授权模型引擎采用了多种性能优化策略：
 
@@ -1327,11 +1212,11 @@ def check_intersection(user, relation, obj):
 
 ---
 
-## 3.5 HTTP API 和 gRPC API 架构
+## 4.4 API 服务层
 
 OpenFGA 提供了两种 API 接口：HTTP RESTful API 和 gRPC API。两种 API 提供相同的功能，但各有特点，适用于不同的使用场景。理解两种 API 的架构和特点，有助于我们选择合适的集成方式。
 
-### 3.7.1 RESTful API 设计
+### 4.4.1 HTTP API 设计
 
 HTTP RESTful API 是 OpenFGA 的主要接口，基于标准的 HTTP 协议，易于集成和使用。
 
@@ -1505,7 +1390,7 @@ OpenFGA 使用标准的 HTTP 状态码：
 }
 ```
 
-### 3.2.2 gRPC API 设计
+### 4.4.2 gRPC API 设计
 
 gRPC 是一个高性能、开源的 RPC 框架，使用 Protocol Buffers 作为序列化协议。
 
@@ -1613,7 +1498,7 @@ if response.allowed:
 3. **流式处理**：支持流式数据传输
 4. **多语言支持**：自动生成各语言客户端
 
-### 3.7.3 API 选择建议
+### 4.4.3 API 认证与授权
 
 选择 HTTP RESTful API 还是 gRPC API，需要根据具体场景决定：
 
@@ -1749,11 +1634,17 @@ backend_client = OpenFgaClient(ClientConfiguration(
 
 ---
 
-## 3.6 关系元组存储
+## 4.5 关系元组存储
 
 关系元组存储是 OpenFGA 的数据持久化层，负责存储授权模型和关系元组数据。OpenFGA 支持多种存储后端，每种后端都有其特点和适用场景。
 
-### 3.7.1 存储接口设计
+### 4.5.1 存储后端选择
+
+### 4.5.2 数据模型设计
+
+### 4.5.3 存储优化策略
+
+### 4.5.4 存储接口设计
 
 OpenFGA 定义了统一的存储接口，支持多种存储后端的实现：
 
@@ -1778,7 +1669,7 @@ type Storage interface {
 }
 ```
 
-### 3.2.2 存储数据结构
+### 4.5.5 存储数据结构
 
 **关系元组表结构：**
 
@@ -1826,7 +1717,7 @@ CREATE TABLE store (
 );
 ```
 
-### 3.7.3 存储查询优化
+### 4.5.6 存储查询优化
 
 **索引策略：**
 
@@ -1855,11 +1746,11 @@ WHERE store_id = $1
 
 ---
 
-## 3.7 存储后端的选择与配置
+## 4.6 存储后端的选择与配置
 
 OpenFGA 支持多种存储后端，包括 PostgreSQL、MySQL、SQLite 和内存存储。选择合适的存储后端对于系统的性能、可靠性和可维护性至关重要。
 
-### 3.7.1 PostgreSQL
+### 4.6.1 PostgreSQL
 
 PostgreSQL 是 OpenFGA **生产环境的首选存储后端**，提供高性能、高可用性和强大的功能支持。
 
@@ -1985,7 +1876,7 @@ export OPENFGA_DATASTORE_URI=postgres://user:pass@master:5432/openfga
 export OPENFGA_DATASTORE_READ_URI=postgres://user:pass@replica:5432/openfga
 ```
 
-### 3.2.2 MySQL
+### 4.6.2 MySQL
 
 MySQL 是另一个广泛使用的关系型数据库，适合已经使用 MySQL 基础设施的环境。
 
@@ -2070,7 +1961,7 @@ export OPENFGA_DATASTORE_MAX_OPEN_CONNECTIONS=25
 export OPENFGA_DATASTORE_MAX_IDLE_CONNECTIONS=5
 ```
 
-### 3.7.3 SQLite
+### 4.6.3 SQLite
 
 SQLite 是一个轻量级的文件数据库，适合开发和测试环境。
 
@@ -2123,7 +2014,7 @@ services:
 
 **注意：** SQLite 不支持并发写入，不适合生产环境。
 
-### 3.7.4 存储后端对比与选择
+### 4.6.4 存储后端对比与选择
 
 #### 功能对比
 
@@ -2206,11 +2097,11 @@ services:
 
 ---
 
-## 3.8 API 服务层
+## 4.7 API 服务层（已合并到 4.4 节）
 
 API 服务层是 OpenFGA 的入口点，负责处理客户端请求、路由到相应的服务组件、验证请求参数、处理错误响应等。API 服务层提供了统一的接口抽象，隐藏了内部实现的复杂性。
 
-### 3.7.1 请求处理流程
+### 4.7.1 请求处理流程
 
 **HTTP API 请求处理流程：**
 
@@ -2262,7 +2153,7 @@ gRPC 服务器
 存储层
 ```
 
-### 3.2.2 错误处理机制
+### 4.7.2 错误处理机制
 
 OpenFGA 使用标准的 HTTP 状态码和错误响应格式：
 
@@ -2291,7 +2182,7 @@ OpenFGA 使用标准的 HTTP 状态码和错误响应格式：
 - **429 Too Many Requests**：请求过多，触发限流
 - **500 Internal Server Error**：服务器内部错误
 
-### 3.7.3 认证和授权
+### 4.7.3 限流和熔断
 
 OpenFGA 支持多种认证方式：
 
@@ -2337,7 +2228,6 @@ const fgaClient = new OpenFgaClient({
 });
 ```
 
-### 3.7.4 限流和熔断
 
 OpenFGA 支持请求限流和熔断机制，保护后端服务：
 
@@ -2363,11 +2253,11 @@ circuit_breaker:
 
 ---
 
-## 3.9 性能与可扩展性设计
+## 4.7 性能与可扩展性设计
 
 OpenFGA 的设计目标是在毫秒级别内完成授权检查，能够支持任何规模的项目。为了实现这一目标，OpenFGA 采用了多种性能优化和可扩展性设计。
 
-### 3.3.1 性能优化策略
+### 4.7.1 性能优化机制
 
 **1. 多层缓存机制**
 
@@ -2423,7 +2313,9 @@ await fga_client.write({
 - **并发查询**：多个数据库查询并发执行
 - **连接池管理**：合理配置数据库连接池
 
-### 3.3.2 可扩展性设计
+### 4.7.2 水平扩展方案
+
+### 4.7.3 高可用性设计
 
 **1. 水平扩展**
 
@@ -2455,11 +2347,11 @@ OpenFGA 集成了 OpenTelemetry，支持性能监控：
 
 ---
 
-## 3.10 组件间的交互关系和数据流
+## 4.8 组件间的交互关系和数据流
 
 理解 OpenFGA 组件间的交互关系和数据流，有助于我们深入理解系统的工作原理，优化性能，排查问题。本节将详细介绍授权检查流程、数据更新流程和组件通信机制。
 
-### 3.9.1 授权检查流程
+### 4.8.1 授权检查流程
 
 授权检查（Check）是 OpenFGA 最核心的操作，涉及多个组件的协同工作。
 
@@ -2655,7 +2547,7 @@ return {
 - 找到权限路径后立即返回
 - 不继续遍历其他路径
 
-### 3.9.2 数据更新流程
+### 4.8.2 数据更新流程
 
 数据更新包括写入关系元组和创建授权模型。
 
@@ -2807,7 +2699,7 @@ API 网关层（请求验证）
 返回模型 ID
 ```
 
-### 3.9.3 组件通信机制
+### 4.8.3 组件通信机制
 
 OpenFGA 组件间通过多种机制进行通信和协调。
 
@@ -2976,7 +2868,7 @@ metrics.increment_counter(f"check.{'allowed' if result else 'denied'}")
 6. 多层缓存、批量操作、查询优化和并发处理等策略，使得 OpenFGA 能够在毫秒级完成授权检查。
 7. 理解组件交互和数据流有助于优化系统性能和排查问题。
 
-在下一章中，我们将学习 OpenFGA 的安装与配置，将理论知识转化为实际的操作技能。
+在下一章中，我们将深入学习授权模型的设计方法，这是 OpenFGA 的核心内容。
 
 ---
 
