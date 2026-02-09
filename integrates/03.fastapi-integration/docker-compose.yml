@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  # OpenFGA 服务
+  openfga:
+    image: openfga/openfga:latest
+    container_name: openfga
+    command: run
+    ports:
+      - "8080:8080"
+      - "3000:3000"
+    environment:
+      - OPENFGA_DATASTORE_ENGINE=memory
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # FastAPI 应用
+  fastapi-app:
+    build: .
+    container_name: fastapi-openfga
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENFGA_API_URL=http://openfga:8080
+      - OPENFGA_STORE_ID=${OPENFGA_STORE_ID}
+      - OPENFGA_MODEL_ID=${OPENFGA_MODEL_ID}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+    depends_on:
+      openfga:
+        condition: service_healthy
+    volumes:
+      - .:/app
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload

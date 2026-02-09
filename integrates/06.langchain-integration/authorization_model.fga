@@ -1,0 +1,61 @@
+model
+  schema 1.1
+
+# 用户类型
+type user
+
+# AI Agent 类型
+type agent
+  relations
+    # Agent 的所有者（用户）
+    define owner: [user]
+    # Agent 可以代表用户行动
+    define can_act_as: owner
+
+# 文档类型
+type document
+  relations
+    # 文档所有者
+    define owner: [user]
+    # 文档查看者（可以是用户或 Agent）
+    define viewer: [user, agent] or owner
+    # 文档编辑者（只能是用户）
+    define editor: [user] or owner
+    # 查看权限
+    define can_read: viewer
+    # 编辑权限
+    define can_write: editor
+
+# 数据库类型
+type database
+  relations
+    # 数据库所有者
+    define owner: [user]
+    # 数据库读取者（可以是用户或 Agent）
+    define reader: [user, agent] or owner
+    # 数据库管理员（只能是用户）
+    define admin: [user] or owner
+    # 查询权限
+    define can_query: reader
+    # 管理权限
+    define can_manage: admin
+
+# 工具类型
+type tool
+  relations
+    # 工具所有者
+    define owner: [user]
+    # 工具执行者（可以是用户或 Agent）
+    define executor: [user, agent]
+    # 执行权限
+    define can_execute: executor or owner
+
+# 敏感操作类型
+type sensitive_operation
+  relations
+    # 操作所有者
+    define owner: [user]
+    # 操作审批者（只能是用户）
+    define approver: [user]
+    # 执行权限（需要审批）
+    define can_execute: approver

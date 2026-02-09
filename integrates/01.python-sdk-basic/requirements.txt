@@ -1,0 +1,11 @@
+# OpenFGA Python SDK
+openfga-sdk>=0.7.0
+
+# 环境变量管理
+python-dotenv>=1.0.0
+
+# 异步支持
+aiohttp>=3.9.0
+
+# 类型检查（开发依赖）
+mypy>=1.8.0

@@ -1,0 +1,32 @@
+{
+  "name": "openfga-nodejs-sdk-basic",
+  "version": "1.0.0",
+  "description": "OpenFGA Node.js/TypeScript SDK 基础集成示例",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/examples.js",
+    "dev": "ts-node src/examples.ts",
+    "dev:advanced": "ts-node src/advanced-examples.ts",
+    "start:advanced": "node dist/advanced-examples.js",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "openfga",
+    "authorization",
+    "typescript",
+    "nodejs"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@openfga/sdk": "^0.7.0",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  }
+}

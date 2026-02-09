@@ -1,0 +1,39 @@
+# 文档管理系统授权模型
+# 支持用户、组织和文档之间的关系
+
+model
+  schema 1.1
+
+# 定义类型
+type user
+
+type organization
+  relations
+    # 组织成员
+    define member: [user]
+    # 组织管理员
+    define admin: [user]
+
+type folder
+  relations
+    # 文件夹所有者
+    define owner: [user, organization#member]
+    # 文件夹的父文件夹
+    define parent: [folder]
+    # 可以查看文件夹
+    define viewer: [user, organization#member] or owner or viewer from parent
+    # 可以编辑文件夹
+    define editor: [user, organization#member] or owner
+
+type document
+  relations
+    # 文档所有者
+    define owner: [user]
+    # 文档所属文件夹
+    define parent: [folder]
+    # 可以查看文档
+    define viewer: [user, organization#member] or owner or editor or viewer from parent
+    # 可以编辑文档
+    define editor: [user, organization#member] or owner or editor from parent
+    # 可以删除文档
+    define deleter: [user] or owner

@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  # Flask 应用
+  flask-app:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - SECRET_KEY=${SECRET_KEY}
+      - OPENFGA_API_URL=http://openfga:8080
+      - OPENFGA_STORE_ID=${OPENFGA_STORE_ID}
+      - OPENFGA_MODEL_ID=${OPENFGA_MODEL_ID}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
+      - FRONTEND_URL=${FRONTEND_URL}
+    volumes:
+      - ./documents.db:/app/documents.db
+      - ./flask_session:/app/flask_session
+    depends_on:
+      - openfga
+    networks:
+      - app-network
+
+  # OpenFGA 服务
+  openfga:
+    image: openfga/openfga:latest
+    command: run
+    ports:
+      - "8080:8080"
+      - "3000:3000"
+    environment:
+      - OPENFGA_DATASTORE_ENGINE=memory
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

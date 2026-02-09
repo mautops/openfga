@@ -1,0 +1,19 @@
+model
+  schema 1.1
+
+# 用户类型
+type user
+
+# 文档类型
+type document
+  relations
+    # 定义所有者关系
+    define owner: [user]
+
+    # 定义编辑者关系
+    # 编辑者可以是直接授权的用户，或者是所有者
+    define editor: [user] or owner
+
+    # 定义查看者关系
+    # 查看者可以是直接授权的用户，或者是编辑者（编辑者自动拥有查看权限）
+    define viewer: [user] or editor
